@@ -1,4 +1,52 @@
 /**
+ * Implements hook_install().
+ */
+function services_install() {
+  try {
+    services_assemble();
+  }
+  catch (error) {
+    alert('services_install - ' + error);
+  }
+}
+
+/**
+ * Iterates over each service defined in drupalgap.services and attaches the
+ * service name to each service, and attaches the service name and resource
+ * name to each resource. 
+ */
+function services_assemble() {
+  try {
+    $.each(drupalgap.services, function(service_name, service){
+        service.name = service_name;
+        $.each(service, function(resource_name, resource){
+            resource.service = service_name;
+            resource.name = resource_name;
+        });
+    });
+  }
+  catch (error) {
+    alert('services_assemble - ' + error);
+  }
+}
+
+/**
+ * Given a service resource JSON object, and the api options for the call, this
+ * will attach the service and resource names to the api options. This is used
+ * so services hooks (hook_services_preprocess(), hook_services_success()) can
+ * make decisions based on the service and resource name.
+ */
+function services_attach_service_and_resource_names_to_api_options(service, api) {
+  try {
+    api.service = $(service).get(0).service;
+    api.resource = $(service).get(0).name;
+  }
+  catch (error) {
+    alert('services_attach_service_and_resource_names_to_api_options - ' + error);
+  }
+}
+
+/**
  * Given a json drupalgap options array from a service resource results call,
  * this extracts data based on the resource and populates necessary global vars.
  */

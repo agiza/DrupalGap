@@ -8,7 +8,10 @@ drupalgap.services.node = {
     },
     'call':function(options){
       try {
-        var api_options = drupalgap_chain_callbacks(drupalgap.services.node.create.options, options);
+        var api_options = drupalgap_chain_callbacks(
+          drupalgap.services.node.create.options,
+          options
+        );
         api_options.data = drupalgap_node_assemble_data(options);
         drupalgap.api.call(api_options);
       }
@@ -27,9 +30,17 @@ drupalgap.services.node = {
       'type':'get',
       'path':'node/%nid.json',
       'success':function(node){
-        node.content = '';
-        if (!drupalgap_empty(node.body)) {
-          node.content = node.body[node.language][0].safe_value;
+        try {
+          node.content = '';
+          if (node.body &&
+              node.language &&
+              node.body[node.language] &&
+              node.body[node.language][0]) {
+            node.content = node.body[node.language][0].safe_value;
+          }
+        }
+        catch (error) {
+          alert('drupalgap.services.node.retrieve - ' + error);
         }
       },
     },
@@ -46,6 +57,7 @@ drupalgap.services.node = {
         }
         var api_options = drupalgap_chain_callbacks(drupalgap.services.node.retrieve.options, options);
         api_options.path = 'node/' + options.nid + '.json';
+        services_attach_service_and_resource_names_to_api_options($(this), api_options);
         drupalgap.api.call(api_options);
       }
       catch (error) {

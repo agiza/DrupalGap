@@ -7,12 +7,23 @@ drupalgap.api = {
 
       // Now assemble the callbacks together.
       var call_options = drupalgap_chain_callbacks(api_options, options);
-
-      // TODO - this is a good spot for a hook, e.g. hook_drupalgap_api_preprocess
+      
+      // Attach the service name and resource name to the call_options so
+      // service hooks (hook_services_success, hook_services_preprocess, etc)
+      // will be able to easily see which service and resource is being called
+      // upon.
+      api_options.service = options.service;
+      api_options.resource = options.resource;
+      call_options.service = options.service;
+      call_options.resource = options.resource;
+      
+      // Invoke hook_services_preprocess().
+      module_invoke_all('services_preprocess', api_options, call_options, options);
 
       // Build the Drupal URL path to call if one hasn't been assembled already
       // by the caller. Save a copy of the service resource url for
-      // hook_services_success() before it gets modified below.
+      // hook_services_preprocess and hook_services_success(), before it gets
+      // modified below.
       call_options.service_resource = '' + options.path;
       if (!call_options.url || call_options.url == '') {
         call_options.url = call_options.site_path + drupalgap.settings.base_path;
@@ -45,40 +56,45 @@ drupalgap.api = {
       // Get CSRF token.
       _drupalgap_api_get_csrf_token(call_options, {
           success:function() {
-            
-            //alert(call_options.url);
-            
-            // Show the loading icon.
-            $.mobile.loading('show', {theme: "b", text: "Loading"});
-            
-            // Build api call object options.
-            var api_object = {
-              url: call_options.url,
-              type: call_options.type,
-              data: call_options.data,
-              dataType: call_options.dataType,
-              async: true,
-              error: call_options.error,
-              success: call_options.success,
-              service_resource:call_options.service_resource
+            try {
+              
+              // Show the loading icon.
+              $.mobile.loading('show', {theme: "b", text: "Loading"});
+              
+              // Build api call object options.
+              var api_object = {
+                url: call_options.url,
+                type: call_options.type,
+                data: call_options.data,
+                dataType: call_options.dataType,
+                async: true,
+                error: call_options.error,
+                success: call_options.success,
+                service_resource:call_options.service_resource,
+                service:call_options.service,
+                resource:call_options.resource
+              }
+              
+              // Synchronous call?
+              if (!call_options.async) {
+                api_object.async = false;
+              }
+              
+              // If there are any beforeSend declarations, attach them to the api
+              // call object.
+              if (call_options.beforeSend) {
+                api_object.beforeSend = call_options.beforeSend;
+              }
+              
+              // Make the call.
+              if (drupalgap.settings.debug) {
+                console.log(JSON.stringify(api_object));
+              }
+              $.ajax(api_object);
             }
-            
-            // Synchronous call?
-            if (!call_options.async) {
-              api_object.async = false;
+            catch (error) {
+              alert('calling _drupalgap_api_get_csrf_token - success callback error - ' + error);
             }
-            
-            // If there are any beforeSend declarations, attach them to the api
-            // call object.
-            if (call_options.beforeSend) {
-              api_object.beforeSend = call_options.beforeSend;
-            }
-            
-            // Make the call.
-            if (drupalgap.settings.debug) {
-              console.log(JSON.stringify(api_object));
-            }
-            $.ajax(api_object);      
           }
       });
     }
@@ -125,16 +141,21 @@ function _drupalgap_api_get_csrf_token(call_options, options) {
             type:'get',
             dataType:'text',
             success:function(token){
-              // Save the token to local storage as sessid, set drupalgap.sessid
-              // with the token, attach the token and the request header to the
-              // call options, then return via the success function.
-              window.localStorage.setItem('sessid', token);
-              drupalgap.sessid = token;
-              call_options.token = token;
-              call_options.beforeSend = function (request) {
-                request.setRequestHeader("X-CSRF-Token", call_options.token);
-              };
-              options.success.call();
+              try {
+                // Save the token to local storage as sessid, set drupalgap.sessid
+                // with the token, attach the token and the request header to the
+                // call options, then return via the success function.
+                window.localStorage.setItem('sessid', token);
+                drupalgap.sessid = token;
+                call_options.token = token;
+                call_options.beforeSend = function (request) {
+                  request.setRequestHeader("X-CSRF-Token", call_options.token);
+                };
+                options.success.call();
+              }
+              catch (error) {
+                alert('_drupalgap_api_get_csrf_token - success call back error - ' + error);
+              }
             },
             error:function (jqXHR, textStatus, errorThrown) {
               alert('Failed to retrieve CSRF token! (' + errorThrown +
@@ -178,7 +199,7 @@ function drupalgap_api_default_options() {
       // Hide the loading message.
       $.mobile.hidePageLoadingMsg();
       // Invoke hook_services_success().
-      module_invoke_all('services_success', this.service_resource, result);
+      module_invoke_all('services_success', this, result);
       // If debugging is turned on, print the result to the console.
       if (drupalgap.settings.debug) {
         // Note: http://stackoverflow.com/a/11616993/763010
@@ -228,6 +249,8 @@ function drupalgap_api_default_options() {
     'service_resource':null, /* holds a copy of the service resource being
                                 called e.g. user/login.json,
                                 system/connect.json */
+    'service':null, /* holds a copy of the current service name */
+    'resource':null /* holds a copy of the current resource name */
   };
   return default_options;
 }
@@ -258,9 +281,14 @@ function hook_mvc_controller() {
 }
 
 /**
- * Called after a successful services API call to a Drupal site. Do not call
- * any services from within your implementation, you may run into an infinite
- * loop in your code. See http://drupalgap.org/project/force_authentication for
- * example usage.
+ * Called before a service call is made to a Drupal site. This hook will be
+ * passed the api JSON object, the call options and the caller options.
+ */
+function hook_services_preprocess(api, call_options, caller_options) { }
+
+/**
+ * Called after a successful services API call to a Drupal site. See
+ * http://drupalgap.org/project/force_authentication for example usage.
  */
 function hook_services_success(url, data) { }
+

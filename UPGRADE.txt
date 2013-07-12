@@ -13,6 +13,13 @@ version of DrupalGap to another.
 | Version Change Notes for Developers |
 |=====================================|
 
+7.x-1.4-alpha => 7.x-1.5-alpha
+
+  When drupalgap_api_default_options() sets up the invocation of
+  hook_services_success(), it now passes along 'this' instead of the
+  'service_resource'. 'this' will contain the names of the 'service_resource',
+  'service' and 'resource' for easier service hook operations.
+
 7.x-1.3-alpha => 7.x-1.4-alpha
 
   Inside index.html, the use of cordova-2.x.js has been removed, as of version

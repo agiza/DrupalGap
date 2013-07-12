@@ -21,7 +21,9 @@ drupalgap.services.drupalgap_system = {
     },
     'call':function(options){
       try {
-        drupalgap.api.call(drupalgap_chain_callbacks(drupalgap.services.drupalgap_system.connect.options, options));
+        var api_options = drupalgap_chain_callbacks(drupalgap.services.drupalgap_system.connect.options, options);
+        services_attach_service_and_resource_names_to_api_options($(this), api_options);
+        drupalgap.api.call(api_options);
       }
       catch (error) {
         navigator.notification.alert(
