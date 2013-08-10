@@ -69,7 +69,7 @@ function menu_block_view(delta) {
         $.each(drupalgap.menus[delta].links, function(index, menu_link){
             // Make a deep copy of the menu link so we don't modify it.
             var link = jQuery.extend(true, {}, menu_link);
-            // If there are no link options, set up defaults.
+            // If there are no link options or attributes, set up defaults.
             if (!link.options) { link.options = {attributes:{}}; }
             else if (!link.options.attributes) { link.options.attributes = {}; }
             // If the link points to the current path, set it as active.
