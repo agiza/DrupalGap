@@ -30,10 +30,32 @@ function menu_execute_active_handler() {
       // Make sure we have a menu link item that can handle this router path,
       // otherwise we'll call it a 404.
       if (!drupalgap.menu_links[router_path]) {
-        return '<h2>404 - Not Found</h2>' +
+        // Is anyone trying to handle a 404? If a result came back, that means
+        // the result contains the path that would like to handle the 404. The
+        // first path in the invocation results will be used. When it is used
+        // the path, page id, and router path will all be updated.
+        var proceed = false;
+        var invocation_results = module_invoke_all('404', router_path);
+        dpm(invocation_results);
+        if (invocation_results && invocation_results.length > 0) {
+          $.each(invocation_results, function(index, result){
+              if (result !== false) {
+                drupalgap_path_set(result);
+                path = result;
+                page_id = drupalgap_get_page_id(path);
+                router_path = drupalgap_get_menu_link_router_path(path);
+                drupalgap_router_path_set(router_path);
+                proceed = true;
+                return false;
+              }
+          });
+        }
+        if (!proceed) {
+          return '<h2>404 - Not Found</h2>' +
                '<h3>Path</h3>' + path +
                '<h3>Router Path</h3>' +
                router_path;
+        }
       }
 
       // Call the page call back for this router path and send along any arguments.
@@ -595,5 +617,4 @@ function drupalgap_menu_router_build_menu_item_relationships(path, menu_item) {
     alert('drupalgap_menu_router_build_relationships - ' + error);
   }
 }
-
 
